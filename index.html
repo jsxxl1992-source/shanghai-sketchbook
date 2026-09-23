@@ -381,7 +381,7 @@ button{font:inherit}
 .rule{
   display:block;width:min(1080px,86vw);margin:clamp(30px,6vh,64px) auto;
   height:clamp(26px,4vw,46px);
-  background:url(sh-sketchbook/divider.png) center / 100% auto no-repeat;
+  background:url(sh-sketchbook/divider.webp) center / 100% auto no-repeat;
   opacity:.5;
 }
 .rule.short{width:min(420px,52vw);opacity:.4}
@@ -442,8 +442,8 @@ button{font:inherit}
   </header>
 
   <section id="sketchbook" class="hero">
-    <img class="botany l" src="sh-sketchbook/botany-left.png" alt="" aria-hidden="true">
-    <img class="botany r" src="sh-sketchbook/botany-right.png" alt="" aria-hidden="true">
+    <img class="botany l" src="sh-sketchbook/botany-left.webp" alt="" aria-hidden="true">
+    <img class="botany r" src="sh-sketchbook/botany-right.webp" alt="" aria-hidden="true">
 
     <p class="hero-kicker">上海地标手绘 · A Shanghai Sketchbook · 九幅图版</p>
 
@@ -496,7 +496,7 @@ button{font:inherit}
       <p class="section-label">About</p>
       <p class="bio">上海是一座在江与海之间生长的城市。这本速写本用钢笔与淡水彩，慢慢画下它最具代表性的九处地方——从外滩的万国建筑群、陆家嘴刺入云端的高塔，到豫园的九曲桥、石库门的青砖弄堂。每一幅都画在摊开的本子上：<a class="bio-link" href="#">墨线勾勒，淡淡上色</a>，留住梧桐树荫、黄浦江的波光，以及新旧并置的城市气息。</p>
     </div>
-    <img class="bloom" src="sh-sketchbook/bloom.png" alt="" aria-hidden="true">
+    <img class="bloom" src="sh-sketchbook/bloom.webp" alt="" aria-hidden="true">
   </section>
 
   <div class="rule short" aria-hidden="true"></div>
@@ -521,15 +521,15 @@ button{font:inherit}
 const Q=new URLSearchParams(location.search);
 const DIR='sh-sketchbook/';
 const PAGES=[
-  {file:'bund.png',             title:'外滩',           place:'The Bund'},
-  {file:'oriental-pearl.png',   title:'东方明珠',       place:'Lujiazui'},
-  {file:'shanghai-tower.png',   title:'上海中心',       place:'Lujiazui'},
-  {file:'yu-garden.png',        title:'豫园',           place:'Yu Garden'},
-  {file:'shanghai-museum.png',  title:'上海博物馆',     place:"People's Square"},
-  {file:'waibaidu-bridge.png',  title:'外白渡桥',       place:'Suzhou Creek'},
-  {file:'jingan-temple.png',    title:'静安寺',         place:"Jing'an"},
-  {file:'xintiandi.png',        title:'新天地',         place:'Xintiandi'},
-  {file:'wukang-building.png',  title:'武康大楼',       place:'Wukang Road'}
+  {file:'bund.webp',             title:'外滩',           place:'The Bund'},
+  {file:'oriental-pearl.webp',   title:'东方明珠',       place:'Lujiazui'},
+  {file:'shanghai-tower.webp',   title:'上海中心',       place:'Lujiazui'},
+  {file:'yu-garden.webp',        title:'豫园',           place:'Yu Garden'},
+  {file:'shanghai-museum.webp',  title:'上海博物馆',     place:"People's Square"},
+  {file:'waibaidu-bridge.webp',  title:'外白渡桥',       place:'Suzhou Creek'},
+  {file:'jingan-temple.webp',    title:'静安寺',         place:"Jing'an"},
+  {file:'xintiandi.webp',        title:'新天地',         place:'Xintiandi'},
+  {file:'wukang-building.webp',  title:'武康大楼',       place:'Wukang Road'}
 ];
 PAGES.forEach(p=>p.url=DIR+p.file);
 const M=PAGES.length, LAND=6;
@@ -1016,17 +1016,23 @@ function startIntro(){
 }
 
 /* ------------------------------------------------------------- boot */
+function preload(p){
+  const im=new Image();im.src=p.url;
+  if(im.decode)return im.decode().catch(()=>{});
+  return new Promise(r=>{im.onload=im.onerror=r});
+}
+const waitMax=ms=>new Promise(r=>setTimeout(r,ms));
 (async function boot(){
   idx=Q.has('shot')?(parseInt(Q.get('shot'),10)||0)%M:0;
   paint();applyView();
-  await Promise.all(PAGES.map(p=>{
-    const im=new Image();im.src=p.url;
-    return im.decode?im.decode().catch(()=>{}):new Promise(r=>{im.onload=im.onerror=r});
-  }));
-  if(document.fonts&&document.fonts.ready)await document.fonts.ready.catch(()=>{});
-  syncZoom();restLoupe();
   document.body.dataset.ready='1';
+  const decoded=PAGES.map(preload);
+  /* 全部图仅 2MB 出头：等它们下完；但最多等 2.5s，绝不让页面干等 */
+  await Promise.race([Promise.all(decoded),waitMax(2500)]);
+  if(document.fonts&&document.fonts.ready)await Promise.race([document.fonts.ready.catch(()=>{}),waitMax(1500)]);
+  syncZoom();restLoupe();
   if(Q.has('shot')){
+    await Promise.race([decoded[idx],waitMax(3000)]);
     if(Q.has('t')){startTurn(Q.get('dir')||'next',parseFloat(Q.get('t')));}
     return;
   }
